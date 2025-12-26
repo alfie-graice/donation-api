@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 // ==========================
 // FIXED ROBLOX API URL
 // ==========================
-const ROBLOX_API = "https://donation-api-production-edf2.up.railway.app/api/register"; 
+const ROBLOX_API = "https://donation-api-production-edf2.up.railway.app/api/register";
 
 // ==========================
 // STORAGE SEMENTARA
@@ -31,12 +31,12 @@ app.post("/api/webhook/saweria", async (req, res) => {
 
   // Format donasi
   const donation = {
-    id: Date.now().toString(),
+    id: Date.now().toString() + Math.floor(Math.random() * 1000), // ID unik
     donor: data.donor || data.name || "Anonymous",
     amount: Number(data.amount || data.amount_raw || 0),
     message: data.message || "",
     platform: "saweria",
-    matchedUsername: data.username || null,
+    matchedUsername: data.username || data.donor || "Anonymous", // fallback donor
     ts: Date.now()
   };
 
@@ -48,7 +48,8 @@ app.post("/api/webhook/saweria", async (req, res) => {
       const response = await axios.post(`${ROBLOX_API}/${SECRET_KEY}`, {
         donor: donation.donor,
         amount: donation.amount,
-        message: donation.message
+        message: donation.message,
+        matchedUsername: donation.matchedUsername
       });
 
       console.log("Kirim ke Roblox:", response.data);
@@ -83,8 +84,8 @@ app.post("/api/register/:secret", (req, res) => {
     return res.status(403).json({ ok: false, error: "Invalid secret key" });
   }
 
-  const { donor, amount, message } = req.body || {};
-  console.log("Register player di Roblox:", { donor, amount, message });
+  const { donor, amount, message, matchedUsername } = req.body || {};
+  console.log("Register player di Roblox:", { donor, matchedUsername, amount, message });
 
   // Di sini bisa diteruskan ke game Roblox via HTTPService / datastore
   res.json({ ok: true, code: "REGISTERED" });
@@ -96,3 +97,4 @@ app.post("/api/register/:secret", (req, res) => {
 app.listen(PORT, () => {
   console.log(`API running on port ${PORT}`);
 });
+
