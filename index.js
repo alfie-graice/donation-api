@@ -23,6 +23,25 @@ let donations = [];           // daftar donasi masuk
 let sentToRoblox = new Set(); // donasi yang sudah dikirim ke Roblox
 
 // ==========================
+// LOGGING AWAL
+// ==========================
+console.log("Starting Donation API...");
+console.log("SECRET_KEY =", SECRET_KEY);
+console.log("PORT =", PORT);
+
+// ==========================
+// MIDDLEWARE ERROR HANDLING JSON
+// ==========================
+app.use((err, req, res, next) => {
+  if (err) {
+    console.error("Middleware error:", err);
+    res.status(400).json({ ok: false, error: "Invalid JSON" });
+  } else {
+    next();
+  }
+});
+
+// ==========================
 // WEBHOOK SAWERIA
 // ==========================
 app.post("/api/webhook/saweria", async (req, res) => {
@@ -45,12 +64,16 @@ app.post("/api/webhook/saweria", async (req, res) => {
   // --- Kirim otomatis ke Roblox ---
   try {
     if (!sentToRoblox.has(donation.id)) {
-      const response = await axios.post(`${ROBLOX_API}/${SECRET_KEY}`, {
-        donor: donation.donor,
-        amount: donation.amount,
-        message: donation.message,
-        matchedUsername: donation.matchedUsername
-      });
+      const response = await axios.post(
+        `${ROBLOX_API}/${SECRET_KEY}`,
+        {
+          donor: donation.donor,
+          amount: donation.amount,
+          message: donation.message,
+          matchedUsername: donation.matchedUsername
+        },
+        { timeout: 5000 } // timeout 5 detik
+      );
 
       console.log("Kirim ke Roblox:", response.data);
       sentToRoblox.add(donation.id);
@@ -95,6 +118,5 @@ app.post("/api/register/:secret", (req, res) => {
 // START SERVER
 // ==========================
 app.listen(PORT, () => {
-  console.log(`API running on port ${PORT}`);
+  console.log(`Donation API running on port ${PORT}`);
 });
-
