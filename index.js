@@ -8,38 +8,14 @@ app.use(bodyParser.json());
 // ==========================
 // ENVIRONMENT VARIABLES
 // ==========================
-const SECRET_KEY = process.env.SECRET_KEY || "DONASI123";
+const SECRET_KEY = process.env.SECRET_KEY || "DONASI123"; // Secret untuk endpoint
 const PORT = process.env.PORT || 3000;
-
-// ==========================
-// FIXED ROBLOX API URL
-// ==========================
-const ROBLOX_API = "https://donation-api-production-edf2.up.railway.app/api/register";
 
 // ==========================
 // STORAGE SEMENTARA
 // ==========================
-let donations = [];
-let sentToRoblox = new Set();
-
-// ==========================
-// LOGGING AWAL
-// ==========================
-console.log("Starting Donation API...");
-console.log("SECRET_KEY =", SECRET_KEY);
-console.log("PORT =", PORT);
-
-// ==========================
-// MIDDLEWARE ERROR HANDLING JSON
-// ==========================
-app.use((err, req, res, next) => {
-  if (err) {
-    console.error("Middleware error:", err);
-    res.status(400).json({ ok: false, error: "Invalid JSON" });
-  } else {
-    next();
-  }
-});
+let donations = [];           // daftar donasi masuk
+let sentToRoblox = new Set(); // donasi yang sudah dikirim ke Roblox
 
 // ==========================
 // WEBHOOK SAWERIA
@@ -49,31 +25,30 @@ app.post("/api/webhook/saweria", async (req, res) => {
   console.log("Webhook masuk:", data);
 
   const donation = {
-    id: Date.now().toString() + Math.floor(Math.random() * 1000),
+    id: Date.now().toString() + Math.floor(Math.random() * 1000), // ID unik
     donor: data.donor || data.name || "Anonymous",
     amount: Number(data.amount || data.amount_raw || 0),
     message: data.message || "",
     platform: "saweria",
-    matchedUsername: data.username || data.donor || "Anonymous",
+    matchedUsername: data.username || data.donor || "Anonymous", // username Roblox
     ts: Date.now()
   };
 
   donations.push(donation);
 
-  // Kirim otomatis ke Roblox
+  // --- Kirim otomatis ke Roblox (opsional) ---
   try {
     if (!sentToRoblox.has(donation.id)) {
-      const response = await axios.post(
-        `${ROBLOX_API}/${SECRET_KEY}`,
-        {
+      const ROBLOX_API = `${process.env.ROBLOX_API || ""}`; // optional
+      if (ROBLOX_API) {
+        const response = await axios.post(`${ROBLOX_API}/${SECRET_KEY}`, {
           donor: donation.donor,
           amount: donation.amount,
           message: donation.message,
           matchedUsername: donation.matchedUsername
-        },
-        { timeout: 5000 }
-      );
-      console.log("Kirim ke Roblox:", response.data);
+        });
+        console.log("Kirim ke Roblox:", response.data);
+      }
       sentToRoblox.add(donation.id);
     }
   } catch (err) {
@@ -93,7 +68,8 @@ app.get("/api/donations/:secret", (req, res) => {
 
   const since = Number(req.query.since || 0);
   const result = donations.filter(d => d.ts > since);
-  res.json({ ok: true, donations: result.slice(0, 20) });
+
+  res.json({ ok: true, donations: result.slice(0, 50) });
 });
 
 // ==========================
@@ -106,6 +82,8 @@ app.post("/api/register/:secret", (req, res) => {
 
   const { donor, amount, message, matchedUsername } = req.body || {};
   console.log("Register player di Roblox:", { donor, matchedUsername, amount, message });
+
+  // Disini bisa diteruskan ke game Roblox via HTTPService / datastore
   res.json({ ok: true, code: "REGISTERED" });
 });
 
