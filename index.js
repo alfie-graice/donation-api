@@ -8,7 +8,7 @@ app.use(bodyParser.json());
 // ==========================
 // ENVIRONMENT VARIABLES
 // ==========================
-const SECRET_KEY = process.env.SECRET_KEY || "DONASI123"; // Secret untuk endpoint
+const SECRET_KEY = process.env.SECRET_KEY || "DONASI123";
 const PORT = process.env.PORT || 3000;
 
 // ==========================
@@ -18,34 +18,40 @@ let donations = [];           // daftar donasi masuk
 let sentToRoblox = new Set(); // donasi yang sudah dikirim ke Roblox
 
 // ==========================
+// MAPPING DUMMY NAMA
+// ==========================
+const USER_MAPPING = {
+  "someguy": "astamaya9",
+  "donatur_dummy": "PlayerDummy",
+  // Tambahkan mapping lain sesuai kebutuhan
+};
+
+// ==========================
 // WEBHOOK SAWERIA
 // ==========================
 app.post("/api/webhook/saweria", async (req, res) => {
   const data = req.body;
   console.log("Webhook masuk:", data);
-  
-const USER_MAPPING = {
-  "someguy": "astamaya9",
-  "donatur_dummy": "PlayerDummy"
-  "Anonymous": "astamaya9"
-};
 
-const donation = {
-  id: Date.now().toString() + Math.floor(Math.random() * 1000),
-  donor: data.donator_name || "Anonymous",
-  amount: Number(data.amount || data.amount_raw || 0),
-  message: data.message || "",
-  platform: "saweria",
-  matchedUsername: USER_MAPPING[data.donator_name] || data.donator_name || "Anonymous",
-  ts: Date.now()
-};
+  const donorName = data.donator_name || "Anonymous";
+  const mappedUsername = USER_MAPPING[donorName] || donorName;
+
+  const donation = {
+    id: Date.now().toString() + Math.floor(Math.random() * 1000),
+    donor: donorName,
+    amount: Number(data.amount || data.amount_raw || 0),
+    message: data.message || "",
+    platform: "saweria",
+    matchedUsername: mappedUsername,
+    ts: Date.now()
+  };
 
   donations.push(donation);
 
   // --- Kirim otomatis ke Roblox (opsional) ---
   try {
     if (!sentToRoblox.has(donation.id)) {
-      const ROBLOX_API = `${process.env.ROBLOX_API || ""}`; // optional
+      const ROBLOX_API = `${process.env.ROBLOX_API || ""}`;
       if (ROBLOX_API) {
         const response = await axios.post(`${ROBLOX_API}/${SECRET_KEY}`, {
           donor: donation.donor,
@@ -99,7 +105,3 @@ app.post("/api/register/:secret", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Donation API running on port ${PORT}`);
 });
-
-
-
-
