@@ -23,16 +23,22 @@ let sentToRoblox = new Set(); // donasi yang sudah dikirim ke Roblox
 app.post("/api/webhook/saweria", async (req, res) => {
   const data = req.body;
   console.log("Webhook masuk:", data);
+  
+const USER_MAPPING = {
+  "someguy": "astamaya9",
+  "donatur_dummy": "PlayerDummy"
+  "Anonymous": "astamaya9"
+};
 
-  const donation = {
-    id: Date.now().toString() + Math.floor(Math.random() * 1000), // ID unik
-    donor: data.donator_name || "Anonymous",
-    amount: Number(data.amount || data.amount_raw || 0),
-    message: data.message || "",
-    platform: "saweria",
-    matchedUsername: data.donator_name || "Anonymous", // username Roblox
-    ts: Date.now()
-  };
+const donation = {
+  id: Date.now().toString() + Math.floor(Math.random() * 1000),
+  donor: data.donator_name || "Anonymous",
+  amount: Number(data.amount || data.amount_raw || 0),
+  message: data.message || "",
+  platform: "saweria",
+  matchedUsername: USER_MAPPING[data.donator_name] || data.donator_name || "Anonymous",
+  ts: Date.now()
+};
 
   donations.push(donation);
 
@@ -93,6 +99,7 @@ app.post("/api/register/:secret", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Donation API running on port ${PORT}`);
 });
+
 
 
 
