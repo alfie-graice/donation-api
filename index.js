@@ -26,11 +26,11 @@ app.post("/api/webhook/saweria", async (req, res) => {
 
   const donation = {
     id: Date.now().toString() + Math.floor(Math.random() * 1000), // ID unik
-    donor: data.donator_name || "Anonymous",
+    donor: data.donator_name || "astamaya9",
     amount: Number(data.amount || data.amount_raw || 0),
     message: data.message || "",
     platform: "saweria",
-    matchedUsername: data.donator_name || "Anonymous", // username Roblox
+    matchedUsername: data.donator_name || "astamaya9", // username Roblox
     ts: Date.now()
   };
 
@@ -93,4 +93,5 @@ app.post("/api/register/:secret", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Donation API running on port ${PORT}`);
 });
+
 
