@@ -8,7 +8,7 @@ app.use(bodyParser.json());
 // CONFIG
 // =======================
 const PORT = process.env.PORT || 3000;
-const SECRET_KEY = process.env.SECRET_KEY || "CHANGE_THIS_SECRET";
+const SECRET_KEY = process.env.SECRET_KEY || "DONASI123";
 
 // simpan donasi sementara (RAM)
 let donations = [];
@@ -25,7 +25,7 @@ function formatRupiah(amount) {
 // =======================
 app.get("/", (req, res) => {
   res.json({
-    status: "ok",
+    ok: true,
     service: "Donation API",
   });
 });
@@ -33,28 +33,29 @@ app.get("/", (req, res) => {
 // =======================
 // SAWERIA WEBHOOK
 // =======================
+// SET DI SAWERIA KE:
+// https://donation-api-production-edf2.up.railway.app/api/donations/saweria
 app.post("/api/donations/saweria", (req, res) => {
   try {
     const data = req.body;
 
-    // validasi payload
+    // validasi minimal payload saweria
     if (!data || !data.amount_raw || !data.donator_name) {
       console.warn("INVALID SAWERIA PAYLOAD:", data);
       return res.status(400).json({ ok: false });
     }
 
-    // ambil data SAWERIA
     const donation = {
+      id: Date.now().toString(), // unique id
       platform: "saweria",
 
-      // INI YANG PENTING
-      donorName: data.donator_name,      // <- dari kolom "Dari"
-      message: data.message || "",        // <- dari kolom Pesan
+      donor: data.donator_name,      // kolom "Dari" (username Roblox)
+      message: data.message || "",   // kolom "Pesan"
 
       amount: Number(data.amount_raw),
       formattedAmount: formatRupiah(Number(data.amount_raw)),
 
-      createdAt: data.created_at || new Date().toISOString(),
+      ts: Date.now(),
     };
 
     donations.push(donation);
@@ -69,21 +70,29 @@ app.post("/api/donations/saweria", (req, res) => {
 });
 
 // =======================
-// ENDPOINT UNTUK ROBLOX
+// ROBLOX POLLING ENDPOINT
 // =======================
+// Roblox WAJIB GET ke:
+// /api/donations/latest
+// Header:
+// x-api-key: DONASI123
 app.get("/api/donations/latest", (req, res) => {
   const key = req.headers["x-api-key"];
 
   if (key !== SECRET_KEY) {
-    return res.status(403).json({ error: "Unauthorized" });
+    return res.status(403).json({
+      ok: false,
+      error: "Unauthorized",
+    });
   }
 
-  // kirim lalu kosongkan
-  const data = donations;
+  // kirim lalu kosongkan (biar tidak dobel notif)
+  const result = donations;
   donations = [];
 
   res.json({
-    donations: data,
+    ok: true,
+    donations: result,
   });
 });
 
