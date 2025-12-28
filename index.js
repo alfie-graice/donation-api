@@ -1,6 +1,5 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const axios = require("axios");
 
 const app = express();
 app.use(bodyParser.json());
@@ -8,83 +7,90 @@ app.use(bodyParser.json());
 // ==========================
 // ENVIRONMENT VARIABLES
 // ==========================
-const SECRET_KEY = process.env.SECRET_KEY || "DONASI123"; // Secret untuk endpoint
+const SECRET_KEY = process.env.SECRET_KEY || "DONASI123";
 const PORT = process.env.PORT || 3000;
 
 // ==========================
-// STORAGE SEMENTARA
+// STORAGE (RAM)
 // ==========================
-let donations = [];           // daftar donasi masuk
-let sentToRoblox = new Set(); // donasi yang sudah dikirim ke Roblox
+
+// daftar donasi masuk
+let donations = [];
+
+// registry player roblox online
+// contoh:
+// {
+//   "123456789": { username: "astamaya9", lastSeen: 1700000000000 }
+// }
+let robloxPlayers = {};
 
 // ==========================
 // WEBHOOK SAWERIA
 // ==========================
-app.post("/api/webhook/saweria", async (req, res) => {
+app.post("/api/webhook/saweria", (req, res) => {
   const data = req.body;
-  console.log("Webhook masuk:", data);
+  console.log("[SAWERIA] Webhook masuk:", data);
 
   const donation = {
-    id: Date.now().toString() + Math.floor(Math.random() * 1000), // ID unik
+    id: Date.now().toString() + Math.floor(Math.random() * 1000),
     donor: data.donator_name || "Anonymous",
     amount: Number(data.amount || data.amount_raw || 0),
     message: data.message || "",
     platform: "saweria",
-    matchedUsername: data.donator_name || "Anonymous", // username Roblox
     ts: Date.now()
   };
 
   donations.push(donation);
 
-  // --- Kirim otomatis ke Roblox (opsional) ---
-  try {
-    if (!sentToRoblox.has(donation.id)) {
-      const ROBLOX_API = `${process.env.ROBLOX_API || ""}`; // optional
-      if (ROBLOX_API) {
-        const response = await axios.post(`${ROBLOX_API}/${SECRET_KEY}`, {
-          donor: donation.donor,
-          amount: donation.amount,
-          message: donation.message,
-          matchedUsername: donation.matchedUsername
-        });
-        console.log("Kirim ke Roblox:", response.data);
-      }
-      sentToRoblox.add(donation.id);
-    }
-  } catch (err) {
-    console.error("Gagal kirim ke Roblox:", err.message);
-  }
-
-  res.json({ ok: true, received: donation });
+  console.log("[SAWERIA] Donation saved:", donation.amount);
+  res.json({ ok: true });
 });
 
 // ==========================
-// FETCH DONASI UNTUK CLIENT / ROBLOX
+// FETCH DONATIONS (ROBLOX POLLING)
 // ==========================
 app.get("/api/donations/:secret", (req, res) => {
   if (req.params.secret !== SECRET_KEY) {
-    return res.status(403).json({ ok: false, error: "Invalid secret key" });
+    return res.status(403).json({ ok: false, error: "INVALID_SECRET" });
   }
 
   const since = Number(req.query.since || 0);
   const result = donations.filter(d => d.ts > since);
 
-  res.json({ ok: true, donations: result.slice(0, 50) });
+  res.json({
+    ok: true,
+    donations: result.slice(0, 50)
+  });
 });
 
 // ==========================
-// REGISTER PLAYER (endpoint Roblox)
+// REGISTER PLAYER ROBLOX
 // ==========================
 app.post("/api/register/:secret", (req, res) => {
   if (req.params.secret !== SECRET_KEY) {
-    return res.status(403).json({ ok: false, error: "Invalid secret key" });
+    return res.status(403).json({ ok: false, error: "INVALID_SECRET" });
   }
 
-  const { donor, amount, message, matchedUsername } = req.body || {};
-  console.log("Register player di Roblox:", { donor, matchedUsername, amount, message });
+  const { userId, username } = req.body || {};
 
-  // Disini bisa diteruskan ke game Roblox via HTTPService / datastore
-  res.json({ ok: true, code: "REGISTERED" });
+  if (!userId || !username) {
+    return res.json({ ok: false, error: "INVALID_DATA" });
+  }
+
+  robloxPlayers[userId] = {
+    username,
+    lastSeen: Date.now()
+  };
+
+  console.log("[ROBLOX] Registered:", userId, username);
+  res.json({ ok: true });
+});
+
+// ==========================
+// HEALTH CHECK (OPTIONAL)
+// ==========================
+app.get("/", (_, res) => {
+  res.send("Donation API is running");
 });
 
 // ==========================
